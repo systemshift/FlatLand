@@ -1,123 +1,163 @@
 from typing import Dict, Any, List, Optional
 import json
 from dataclasses import dataclass
+import jsonschema
+from .schemas import ENVIRONMENT_SCHEMA, EnvironmentDefinition
+from .world import World
 
 @dataclass
 class GeneratorResponse:
-    """Container for the LLM generator response."""
-    code: str
+    """Container for the generator response."""
+    definition: EnvironmentDefinition
     metadata: Dict[str, Any]
     error: Optional[str] = None
 
-class LLMEnvironmentGenerator:
-    """Handles generation of environments using LLM APIs."""
+class EnvironmentGenerator:
+    """Handles generation and validation of environments."""
     
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize the generator.
+    def __init__(self):
+        """Initialize the generator."""
+        self._default_template = {
+            "metadata": {
+                "name": "Default Environment",
+                "description": "A basic environment"
+            },
+            "grid": {
+                "width": 10,
+                "height": 10,
+                "initial_state": [[0] * 10 for _ in range(10)]
+            },
+            "entities": [],
+            "rules": []
+        }
+    
+    def validate_definition(self, definition: Dict[str, Any]) -> Optional[str]:
+        """Validate an environment definition against the schema.
         
         Args:
-            api_key: Optional API key for the LLM service
-        """
-        self.api_key = api_key
-        self._default_template = """
-        Create a grid-based environment following these constraints:
-        {constraints}
-        
-        Environment request: {prompt}
-        
-        Return only valid Python code that creates the environment.
-        The code should:
-        1. Create a World instance
-        2. Add walls, items, and other entities
-        3. Set the player's starting position
-        4. Return the world object
-        
-        Example format:
-        ```python
-        def create_environment():
-            world = World(10, 10)
-            # Add walls
-            for x in range(10):
-                world.grid.set_cell(x, 0, 1)  # Top wall
-            # Add items
-            world.add_entity(5, 5, "key")
-            # Set player position
-            world.player_pos = (1, 1)
-            return world
-        ```
-        """
-    
-    def generate(self, prompt: str, constraints: List[str]) -> GeneratorResponse:
-        """Generate an environment based on the prompt and constraints.
-        
-        Args:
-            prompt: Description of the desired environment
-            constraints: List of constraints to apply
-            
-        Returns:
-            GeneratorResponse containing the generated code
-        """
-        # For now, return a simple test environment
-        # In practice, this would call an LLM API
-        test_code = """
-def create_environment():
-    # Create a 10x10 world
-    world = World(10, 10)
-    
-    # Add walls around the edges
-    for x in range(10):
-        world.grid.set_cell(x, 0, 1)  # Top wall
-        world.grid.set_cell(x, 9, 1)  # Bottom wall
-    for y in range(10):
-        world.grid.set_cell(0, y, 1)  # Left wall
-        world.grid.set_cell(9, y, 1)  # Right wall
-    
-    # Add a key and door
-    world.add_entity(3, 3, "key")
-    world.add_entity(7, 7, "door")
-    
-    # Set player starting position
-    world.player_pos = (1, 1)
-    world.grid.set_cell(1, 1, 2)  # Mark player position
-    
-    return world
-"""
-        return GeneratorResponse(
-            code=test_code,
-            metadata={
-                "size": (10, 10),
-                "entities": ["key", "door"],
-                "constraints_applied": constraints
-            }
-        )
-    
-    def set_template(self, template: str):
-        """Set a custom prompt template for generation.
-        
-        Args:
-            template: The new template to use
-        """
-        self._default_template = template
-    
-    def validate_code(self, code: str) -> Optional[str]:
-        """Basic validation of generated code.
-        
-        Args:
-            code: The code to validate
+            definition: Dictionary containing environment definition
             
         Returns:
             Error message if invalid, None if valid
         """
         try:
-            # Basic syntax check
-            compile(code, '<string>', 'exec')
-            
-            # Check for required elements
-            required = ['World', 'create_environment', 'return world']
-            for req in required:
-                if req not in code:
-                    return f"Missing required element: {req}"
-            
+            jsonschema.validate(definition, ENVIRONMENT_SCHEMA)
             return None
+        except jsonschema.exceptions.ValidationError as e:
+            return f"Schema validation error: {str(e)}"
         except Exception as e:
-            return f"Code validation error: {str(e)}"
+            return f"Validation error: {str(e)}"
+    
+    def from_json(self, json_str: str) -> GeneratorResponse:
+        """Create environment from JSON string.
+        
+        Args:
+            json_str: JSON string containing environment definition
+            
+        Returns:
+            GeneratorResponse containing parsed definition or error
+        """
+        try:
+            data = json.loads(json_str)
+            error = self.validate_definition(data)
+            if error:
+                return GeneratorResponse(
+                    definition=EnvironmentDefinition.from_dict(self._default_template),
+                    metadata={},
+                    error=error
+                )
+            
+            definition = EnvironmentDefinition.from_dict(data)
+            return GeneratorResponse(
+                definition=definition,
+                metadata={
+                    "size": (definition.grid["width"], definition.grid["height"]),
+                    "entity_count": len(definition.entities),
+                    "rule_count": len(definition.rules)
+                }
+            )
+        except Exception as e:
+            return GeneratorResponse(
+                definition=EnvironmentDefinition.from_dict(self._default_template),
+                metadata={},
+                error=f"Failed to parse JSON: {str(e)}"
+            )
+    
+    def to_world(self, definition: EnvironmentDefinition) -> World:
+        """Convert environment definition to World instance.
+        
+        Args:
+            definition: The environment definition to convert
+            
+        Returns:
+            World instance configured according to definition
+        """
+        world = World(definition.grid["width"], definition.grid["height"])
+        
+        # Set initial grid state if provided
+        if "initial_state" in definition.grid:
+            for y, row in enumerate(definition.grid["initial_state"]):
+                for x, cell in enumerate(row):
+                    world.grid.set_cell(x, y, cell)
+        
+        # Add entities
+        for entity in definition.entities:
+            x, y = entity["position"]
+            world.add_entity(
+                x, y,
+                entity["type"],
+                entity.get("properties", {})
+            )
+        
+        # Apply rules
+        for rule in definition.rules:
+            if rule["type"] == "cardinal_movement":
+                world.constraint_engine.add_constraint(
+                    "cardinal_movement",
+                    lambda w, a: abs(a[1][0]) + abs(a[1][1]) == 1 if a[0] == "move" else True,
+                    "Can only move in cardinal directions"
+                )
+            elif rule["type"] == "inventory_limit":
+                limit = rule.get("properties", {}).get("max_items", 1)
+                world.constraint_engine.add_constraint(
+                    "inventory_limit",
+                    lambda w, a, limit=limit: len(w.inventory) < limit if a[0] == "pickup" else True,
+                    f"Cannot carry more than {limit} items"
+                )
+        
+        return world
+    
+    def to_json(self, world: World) -> str:
+        """Convert World instance to JSON definition.
+        
+        Args:
+            world: The World instance to convert
+            
+        Returns:
+            JSON string containing environment definition
+        """
+        definition = {
+            "metadata": {
+                "name": "Exported Environment",
+                "description": "Environment exported from World instance"
+            },
+            "grid": {
+                "width": world.grid.width,
+                "height": world.grid.height,
+                "initial_state": [
+                    [world.grid.get_cell(x, y) for x in range(world.grid.width)]
+                    for y in range(world.grid.height)
+                ]
+            },
+            "entities": [
+                {
+                    "type": entity_type,
+                    "position": [x, y],
+                    "properties": data if data else {}
+                }
+                for (x, y), (entity_type, data) in world.entities.items()
+            ],
+            "rules": []  # TODO: Export constraints as rules
+        }
+        
+        return json.dumps(definition, indent=2)
