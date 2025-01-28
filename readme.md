@@ -7,152 +7,193 @@
 [![Tests](https://github.com/systemshift/flatland/actions/workflows/tests.yml/badge.svg)](https://github.com/yourusername/flatland/actions)
 
 ![](docs/demo.gif)  
-*Example: LLM-generated dungeon with physics constraints*
+*Example: Sokoban puzzle with rule-based interactions*
 
 ## Quick Example
 
+```json
+{
+  "metadata": {
+    "name": "Ice & Fire",
+    "description": "Elements interact through rules"
+  },
+  "rules": [
+    {
+      "name": "water_freezing",
+      "type": "conditional",
+      "when": {
+        "condition": "entity.type == 'water' && adjacent_to('ice')",
+        "entities": ["water", "ice"]
+      },
+      "then": {
+        "action": "transform",
+        "parameters": { "type": "ice" }
+      }
+    }
+  ]
+}
+```
+
 ```python
-from flatland import FlatLand, tasks
+from flatland import LogicEngine
 
-# Ask an LLM to generate a dungeon
-llm_response = tasks.generate(
-    prompt="A maze with locked doors and keys",
-    constraints={"inventory_size": 2, "movement": "cardinal"}
-)
+# Load your world definition
+engine = LogicEngine()
+engine.load_environment("ice_world.json")
 
-# Validate and run
-world = FlatLand.from_code(llm_response.code)
-world.simulate(steps=100)
-print(world.evaluate())  # Metrics: constraints obeyed? goal achieved?
+# Watch it evolve
+while True:
+    result = engine.step()
+    print(f"Changes: {result['changes']}")
 ```
 
 ## Key Features
 
-- 🧱 **Constraint-First Design**: Enforce physics, inventory limits, or movement rules to test LLM reasoning
-- ⚡ **Blazing Fast**: NumPy-backed grid engine handles 10M+ cell updates/sec
-- 🤖 **LLM-Friendly**: Tools for Gemini/GPT/Claude to generate valid environments via function calling
-- 🧪 **Testing Suite**: Prebuilt evaluation metrics for LLM-generated environments (goal completion, rule violations)
-- 🕹️ **NetHack-Inspired**: Built-in templates for roguelike dungeons, cellular automata, and grid-based games
+- 🎯 **Rule-Based Logic**: Define complex behaviors through conditional, transformation, and constraint rules
+- 🔄 **State Management**: Track and validate state changes with built-in history
+- ⚡ **Priority System**: Fine-grained control over rule execution order
+- 🛡️ **Validation**: Comprehensive JSON schema validation for environments
+- 🧩 **Built-in Functions**: Rich toolkit for spatial and state queries
+- 🤖 **LLM-Ready**: JSON format designed for AI environment generation
 
 ## Installation
 
 ```bash
-pip install flatland
+pip install flatland-logic
 ```
 
-## Basic Usage
+## Core Concepts
 
-### 1. Define Constraints
+### 1. Rule Types
+
+#### Conditional Rules
+```json
+{
+  "name": "push_box",
+  "type": "conditional",
+  "when": {
+    "condition": "entity.type == 'player' && adjacent_to('box')",
+    "entities": ["player", "box"]
+  },
+  "then": {
+    "action": "push",
+    "parameters": { "direction": "movement_direction" }
+  }
+}
+```
+
+#### Transformation Rules
+```json
+{
+  "name": "fire_spread",
+  "type": "transformation",
+  "priority": 2,
+  "when": {
+    "condition": "entity.type == 'fire'",
+    "entities": ["fire"]
+  },
+  "then": {
+    "action": "spread",
+    "parameters": {
+      "probability": 0.3,
+      "type": "fire"
+    }
+  }
+}
+```
+
+#### Constraint Rules
+```json
+{
+  "name": "gravity",
+  "type": "constraint",
+  "when": {
+    "condition": "entity.movable == true",
+    "entities": ["any"]
+  },
+  "then": {
+    "action": "validate",
+    "parameters": {
+      "condition": "has_support_below"
+    }
+  }
+}
+```
+
+### 2. Built-in Functions
+
+| Function | Description |
+|----------|-------------|
+| `adjacent_to(type)` | Check if entity neighbors type |
+| `distance_to(type, max)` | Check distance to nearest type |
+| `count_nearby(type, radius)` | Count entities within radius |
+| `has_property(prop)` | Check entity properties |
+| `can_move_to(x, y)` | Validate movement target |
+
+### 3. State Management
 
 ```python
-from flatland import ConstraintEngine
+# Get current state
+state = engine.state_manager.get_current_state()
 
-engine = ConstraintEngine(
-    movement="cardinal",  # Disallow diagonal movement
-    inventory_size=3,     # Max 3 items
-    max_agents=1          # Single-agent environments only
-)
+# Check history
+changes = engine.state_manager.history[-5:]
+
+# Validate state transitions
+engine.rule_validator.validate_state(new_state)
 ```
 
-### 2. Generate Environments
+## Example Environments
 
-```python
-from flatland import tasks
+Check `examples/` for complete environments:
 
-# Let an LLM create a dungeon
-response = tasks.generate(
-    prompt="A lava puzzle where agents must push blocks to cross",
-    constraints=engine,
-    llm="gemini-pro"  # or "gpt-4", "claude-3"
-)
-
-# Run the generated environment
-world = response.to_world()
-world.step()  # Advance simulation
-```
-
-### 3. Evaluate LLM Performance
-
-```python
-metrics = world.evaluate(
-    success_conditions=["player reached exit", "no lava damage"],
-    failure_conditions=["agent died", "constraint_violations > 0"]
-)
-print(metrics.success)  # True/False
-```
+- 🎮 `sokoban.json`: Classic box-pushing puzzle
+- 🌊 `water_physics.json`: Fluid simulation rules
+- 🧟 `zombie_spread.json`: Contagion mechanics
+- 🔥 `wildfire.json`: Environmental interactions
 
 ## LLM Integration
 
-### With LangChain
-
-```python
-from langchain_flatland import FlatLandToolkit
-
-tools = FlatLandToolkit(constraints=engine).get_tools()
-agent = initialize_llm_agent(tools, llm=ChatOpenAI())
-agent.run("Create a dungeon where water freezes enemies on contact")
-```
-
-### With OpenAI Function Calling
+### With Function Calling
 
 ```python
 response = client.chat.completions.create(
     model="gpt-4",
-    messages=[{"role": "user", "content": "Build a zombie survival game..."}],
-    tools=flatland_tools  # Predefined schema for FlatLand actions
+    messages=[{"role": "user", "content": "Create a puzzle..."}],
+    functions=[{
+        "name": "create_environment",
+        "parameters": ENVIRONMENT_SCHEMA
+    }]
 )
 ```
 
-## Advanced Usage
-
-### Custom Constraints
+### With Direct Generation
 
 ```python
-# Add a "no flying" rule
-engine.add_constraint(
-    name="anti_gravity",
-    validator=lambda world, agent: agent.y_velocity <= 0,
-    error="Agents cannot fly!"
-)
+prompt = """
+Create a FlatLand environment where:
+1. Water freezes when touching ice
+2. Fire melts ice into water
+3. Water extinguishes fire
+"""
+
+# LLM generates valid JSON following schema
 ```
-
-### Multi-Agent Testing
-
-```python
-world = FlatLand(grid_size=(50, 50))
-world.add_agent(Agent(strategy="llm-generated"))  # LLM-controlled
-world.add_agent(Agent(strategy="random"))         # Baseline opponent
-world.simulate(steps=1000)  # Battle royale!
-```
-
-## Evaluation Metrics
-
-| Metric | Description |
-|--------|-------------|
-| constraint_violations | Times LLM broke rules (e.g., moved through walls) |
-| goal_completion | % of requested features implemented |
-| step_efficiency | Actions taken vs optimal solution |
-| playability | FPS/stability under load (stress test) |
 
 ## Contributing
 
-1. Clone: `git clone https://github.com/systemshift/flatland.git`
-2. Install dev deps: `pip install -e .[dev]`
-3. Run tests: `pytest tests/`
+1. Fork & Clone
+2. Install: `pip install -e .[dev]`
+3. Test: `pytest tests/`
 
-See CONTRIBUTING.md for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Roadmap
 
-- Visual Editor: GUI for designing constraint templates
-- Benchmarks: LLM leaderboards for environment generation
-- Gym Integration: RL-ready environments via flatland-gym
-
-## Inspired By
-
-- NetHack (Complexity within constraints)
-- Griddly (Grid-based RL)
-- LangChain (LLM tooling)
+- 📊 Visualization Tools
+- 🤖 LLM Generation Templates
+- 🔄 State Diffing & Replay
+- 🎮 Interactive Debug Mode
 
 ## License
 

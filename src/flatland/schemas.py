@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 ENVIRONMENT_SCHEMA = {
     "type": "object",
-    "required": ["metadata", "grid", "entities"],
+    "required": ["metadata", "initial_state"],
     "properties": {
         "metadata": {
             "type": "object",
@@ -11,40 +11,51 @@ ENVIRONMENT_SCHEMA = {
             "properties": {
                 "name": {"type": "string"},
                 "description": {"type": "string"},
-                "version": {"type": "string", "default": "1.0"}
+                "version": {"type": "string"}
             }
         },
-        "grid": {
+        "initial_state": {
             "type": "object",
-            "required": ["width", "height"],
+            "required": ["grid", "entities"],
             "properties": {
-                "width": {"type": "integer", "minimum": 1},
-                "height": {"type": "integer", "minimum": 1},
-                "initial_state": {
+                "grid": {
+                    "type": "object",
+                    "required": ["width", "height", "cells"],
+                    "properties": {
+                        "width": {"type": "number"},
+                        "height": {"type": "number"},
+                        "cells": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {"type": "number"}
+                            }
+                        }
+                    }
+                },
+                "entities": {
                     "type": "array",
                     "items": {
-                        "type": "array",
-                        "items": {"type": "integer"}
-                    }
-                }
-            }
-        },
-        "entities": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "required": ["type", "position"],
-                "properties": {
-                    "type": {"type": "string"},
-                    "position": {
-                        "type": "array",
-                        "items": {"type": "integer"},
-                        "minItems": 2,
-                        "maxItems": 2
-                    },
-                    "properties": {
                         "type": "object",
-                        "default": {}
+                        "required": ["id", "type", "position"],
+                        "properties": {
+                            "id": {"type": "string"},
+                            "type": {"type": "string"},
+                            "position": {
+                                "type": "array",
+                                "items": {"type": "number"},
+                                "minItems": 2,
+                                "maxItems": 2
+                            },
+                            "properties": {
+                                "type": "object",
+                                "properties": {
+                                    "movable": {"type": "boolean"},
+                                    "destructible": {"type": "boolean"},
+                                    "state": {"type": "string"}
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -53,16 +64,69 @@ ENVIRONMENT_SCHEMA = {
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["type"],
+                "required": ["name", "type", "when", "then"],
                 "properties": {
-                    "type": {"type": "string"},
-                    "properties": {
+                    "name": {"type": "string"},
+                    "type": {
+                        "type": "string",
+                        "enum": ["conditional", "transformation", "constraint"]
+                    },
+                    "priority": {"type": "number"},
+                    "when": {
                         "type": "object",
-                        "default": {}
+                        "required": ["condition"],
+                        "properties": {
+                            "condition": {"type": "string"},
+                            "entities": {
+                                "type": "array",
+                                "items": {"type": "string"}
+                            }
+                        }
+                    },
+                    "then": {
+                        "type": "object",
+                        "required": ["action", "parameters"],
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": ["transform", "move", "validate"]
+                            },
+                            "parameters": {
+                                "type": "object",
+                                "additionalProperties": True
+                            }
+                        }
                     }
                 }
-            },
-            "default": []
+            }
+        },
+        "victory_conditions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["type", "condition"],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["state", "position", "collection"]
+                    },
+                    "condition": {"type": "string"}
+                }
+            }
+        },
+        "failure_conditions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["type", "condition"],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["state", "position", "collection"]
+                    },
+                    "condition": {"type": "string"}
+                }
+            }
         }
     }
 }
@@ -71,25 +135,28 @@ ENVIRONMENT_SCHEMA = {
 class EnvironmentDefinition:
     """Container for parsed environment definition."""
     metadata: Dict[str, str]
-    grid: Dict[str, Any]
-    entities: list
+    initial_state: Dict[str, Any]
     rules: list
+    victory_conditions: list
+    failure_conditions: list
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'EnvironmentDefinition':
         """Create EnvironmentDefinition from dictionary."""
         return cls(
             metadata=data["metadata"],
-            grid=data["grid"],
-            entities=data["entities"],
-            rules=data.get("rules", [])
+            initial_state=data["initial_state"],
+            rules=data.get("rules", []),
+            victory_conditions=data.get("victory_conditions", []),
+            failure_conditions=data.get("failure_conditions", [])
         )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "metadata": self.metadata,
-            "grid": self.grid,
-            "entities": self.entities,
-            "rules": self.rules
+            "initial_state": self.initial_state,
+            "rules": self.rules,
+            "victory_conditions": self.victory_conditions,
+            "failure_conditions": self.failure_conditions
         }
