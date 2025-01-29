@@ -10,21 +10,50 @@ def main():
     engine = LogicEngine()
     engine.load_environment(env_def)
     
-    # Run a few simulation steps
-    print("Initial state:")
+    # Print initial state
+    print("\nInitial state:")
     print_state(engine.state_manager.get_current_state())
     
-    for i in range(5):
-        print(f"\nStep {i + 1}:")
-        result = engine.step()
-        print("Changes:", result['changes'])
+    # Game loop
+    while True:
+        # Get player input
+        command = input("\nEnter move (up/down/left/right) or 'q' to quit: ").lower()
+        if command == 'q':
+            break
+            
+        if command not in ['up', 'down', 'left', 'right']:
+            print("Invalid command!")
+            continue
+            
+        # Process move
+        result = engine.process_input(command)
+        
+        if "error" in result:
+            print("Error:", result["error"])
+            continue
+            
+        # Print results
+        print("\nChanges:", result['changes'])
         print_state(result['state'])
+        
+        # Check victory/failure conditions
+        if result['victory']:
+            print("\nVictory! You've completed the puzzle!")
+            break
+        elif result['failure']:
+            print("\nGame Over!")
+            break
 
 def print_state(state):
     """Helper function to visualize the grid state."""
     grid = state['grid']
     cells = grid['cells']
     
+    print("Grid (Raw Values):")
+    for row in cells:
+        print(' '.join(str(cell) for cell in row))
+        
+    print("\nGrid (Symbols):")
     # Cell type mapping
     symbols = {
         0: '.',  # Empty
@@ -34,7 +63,6 @@ def print_state(state):
         4: '.',  # Goal
     }
     
-    print("Grid:")
     for row in cells:
         print(''.join(symbols.get(cell, '?') for cell in row))
     

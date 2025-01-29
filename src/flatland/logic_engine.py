@@ -44,11 +44,86 @@ class LogicEngine:
         # Sort rules by priority
         self.rules.sort(key=lambda r: r.priority, reverse=True)
         
+        # Load victory and failure conditions
+        self.victory_conditions = json_data.get("victory_conditions", [])
+        self.failure_conditions = json_data.get("failure_conditions", [])
+        
+    def process_input(self, command: str) -> Dict[str, Any]:
+        """Process player input command and execute a simulation step.
+        
+        Args:
+            command: String command (e.g., "up", "down", "left", "right")
+            
+        Returns:
+            Dict containing the new state, changes, and victory/failure status
+        """
+        # Convert command to target position
+        state = self.state_manager.get_current_state()
+        current_entity = next(
+            (e for e in state["entities"] if e["type"] == "player"),
+            None
+        )
+        
+        if not current_entity:
+            return {"error": "No player entity found"}
+            
+        x, y = current_entity["position"]
+        
+        # Calculate target position based on command
+        if command == "up":
+            target_x, target_y = x, y - 1
+        elif command == "down":
+            target_x, target_y = x, y + 1
+        elif command == "left":
+            target_x, target_y = x - 1, y
+        elif command == "right":
+            target_x, target_y = x + 1, y
+        else:
+            return {"error": f"Unknown command: {command}"}
+            
+        # Debug movement check
+        print(f"\nDebug: Checking movement to ({target_x}, {target_y})")
+        print(f"Cell value at target: {state['grid']['cells'][target_y][target_x]}")
+        
+        # Check if target position is valid
+        can_move = self._check_movement(state, target_x, target_y)
+        if not can_move:
+            return {"error": "Cannot move there"}
+            
+        # Set current entity in the state manager's state
+        self.state_manager.current_state["current_entity"] = current_entity
+        
+        # Create a move action
+        action = {
+            "action": "move",
+            "parameters": {
+                "position": [target_x, target_y]
+            }
+        }
+        
+        # Apply the move directly
+        result = self._apply_action(action)
+        if result:
+            changes = [{
+                "rule": "player_movement",
+                "effect": result
+            }]
+            self.state_manager.record_step(changes)
+            
+            return {
+                "state": self.state_manager.get_current_state(),
+                "changes": changes,
+                "victory": self.check_victory_conditions(),
+                "failure": self.check_failure_conditions()
+            }
+            
+        return {"error": "Move failed"}
+        
     def step(self) -> Dict[str, Any]:
         """Execute one step of the simulation.
         
         Returns:
-            Dict containing the new state and any events/changes
+            Dict containing the new state, changes, and victory/failure status
         """
         changes = []
         
@@ -65,10 +140,44 @@ class LogicEngine:
         # Update state history
         self.state_manager.record_step(changes)
         
+        # Check victory/failure conditions
+        victory = self.check_victory_conditions()
+        failure = self.check_failure_conditions()
+        
         return {
             "state": self.state_manager.get_current_state(),
-            "changes": changes
+            "changes": changes,
+            "victory": victory,
+            "failure": failure
         }
+
+    def check_victory_conditions(self) -> bool:
+        """Check if any victory conditions are met."""
+        if not hasattr(self, 'victory_conditions'):
+            return False
+            
+        state = self.state_manager.get_current_state()
+        for condition in self.victory_conditions:
+            # Set the state context for condition evaluation
+            state["current_entity"] = None  # Reset for global conditions
+            
+            if not self._evaluate_condition({"condition": condition["condition"]}):
+                return False
+        return True
+        
+    def check_failure_conditions(self) -> bool:
+        """Check if any failure conditions are met."""
+        if not hasattr(self, 'failure_conditions'):
+            return False
+            
+        state = self.state_manager.get_current_state()
+        for condition in self.failure_conditions:
+            # Set the state context for condition evaluation
+            state["current_entity"] = None  # Reset for global conditions
+            
+            if self._evaluate_condition({"condition": condition["condition"]}):
+                return True
+        return False
         
     def _evaluate_condition(self, condition: Dict[str, Any]) -> bool:
         """Evaluate a rule's condition against current state."""
@@ -126,37 +235,129 @@ class LogicEngine:
         return None
 
     # Built-in function implementations
-    def _check_adjacent(self, state: Dict[str, Any], type: str) -> bool:
-        """Check if entity is adjacent to type."""
-        pass  # Implementation details
-        
-    def _check_distance(self, state: Dict[str, Any], type: str, max_dist: int) -> bool:
-        """Check if entity is within distance of type."""
-        pass  # Implementation details
-        
-    def _count_entities(self, state: Dict[str, Any], type: str, radius: int) -> int:
-        """Count entities of type within radius."""
-        pass  # Implementation details
-        
-    def _check_property(self, state: Dict[str, Any], prop: str) -> bool:
-        """Check if entity has property."""
-        pass  # Implementation details
-        
-    def _check_type(self, state: Dict[str, Any], type: str) -> bool:
-        """Check if entity is of type."""
-        pass  # Implementation details
-        
-    def _check_movement(self, state: Dict[str, Any], x: int, y: int) -> bool:
-        """Check if position is valid for movement."""
-        pass  # Implementation details
-        
+    # Core Grid Operations
+    def _get_cell(self, state: Dict[str, Any], x: int, y: int) -> int:
+        """Get cell value at coordinates."""
+        grid = state["grid"]
+        if 0 <= x < grid["width"] and 0 <= y < grid["height"]:
+            return grid["cells"][y][x]
+        return -1  # Out of bounds
+    
+    def _set_cell(self, state: Dict[str, Any], x: int, y: int, value: int) -> bool:
+        """Set cell value at coordinates."""
+        grid = state["grid"]
+        if 0 <= x < grid["width"] and 0 <= y < grid["height"]:
+            grid["cells"][y][x] = value
+            return True
+        return False
+    
+    def _get_entity_at(self, state: Dict[str, Any], x: int, y: int) -> Optional[Dict[str, Any]]:
+        """Find entity at given position."""
+        for entity in state["entities"]:
+            if entity["position"] == [x, y]:
+                return entity
+        return None
+
     def _get_current_entity(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Get current entity being evaluated."""
-        pass  # Implementation details
-        
+        # In the context of rule evaluation, this would be set before
+        # evaluating conditions. For now, we'll use a simple implementation.
+        return state.get("current_entity", {})
+
+    # Entity Operations
+    def _check_type(self, state: Dict[str, Any], type_str: str) -> bool:
+        """Check if current entity is of given type."""
+        current = self._get_current_entity(state)
+        return current.get("type", "") == type_str
+    
+    def _check_property(self, state: Dict[str, Any], prop: str) -> bool:
+        """Check if current entity has property."""
+        current = self._get_current_entity(state)
+        return prop in current.get("properties", {})
+    
     def _has_entity_type(self, state: Dict[str, Any], entity_type: str) -> bool:
-        """Check if state contains entity of given type."""
-        pass  # Implementation details
+        """Check if state contains entity type."""
+        return any(e["type"] == entity_type for e in state["entities"])
+
+    # Spatial Operations
+    def _check_adjacent(self, state: Dict[str, Any], type_str: str) -> bool:
+        """Check if entity is adjacent to type."""
+        current = self._get_current_entity(state)
+        if not current:
+            return False
+            
+        x, y = current["position"]
+        # Check all four directions
+        directions = [(0,1), (1,0), (0,-1), (-1,0)]
+        for dx, dy in directions:
+            entity = self._get_entity_at(state, x+dx, y+dy)
+            if entity and entity["type"] == type_str:
+                return True
+        return False
+    
+    def _check_distance(self, state: Dict[str, Any], type_str: str, max_dist: int) -> bool:
+        """Manhattan distance check to nearest entity of type."""
+        current = self._get_current_entity(state)
+        if not current:
+            return False
+            
+        x1, y1 = current["position"]
+        for other in state["entities"]:
+            if other["type"] == type_str:
+                x2, y2 = other["position"]
+                if abs(x2-x1) + abs(y2-y1) <= max_dist:
+                    return True
+        return False
+    
+    def _check_movement(self, state: Dict[str, Any], x: int, y: int) -> bool:
+        """Check if position is valid for movement."""
+        # Check if position is in bounds
+        grid = state["grid"]
+        if not (0 <= x < grid["width"] and 0 <= y < grid["height"]):
+            return False
+            
+        # Check for walls (cell value 1)
+        if grid["cells"][y][x] == 1:
+            return False
+            
+        # Check for boxes (cell value 3)
+        if grid["cells"][y][x] == 3:
+            # Get movement direction
+            current = self._get_current_entity(state)
+            if not current:
+                return False
+                
+            dx = x - current["position"][0]
+            dy = y - current["position"][1]
+            
+            # Check if we can push the box
+            next_x = x + dx
+            next_y = y + dy
+            
+            # Box can be pushed if next position is empty (0) or goal (4)
+            if not (0 <= next_x < grid["width"] and 0 <= next_y < grid["height"]):
+                return False
+                
+            next_cell = grid["cells"][next_y][next_x]
+            return next_cell in [0, 4]
+            
+        # Position is empty (0) or goal (4)
+        return grid["cells"][y][x] in [0, 4]
+    
+    def _count_entities(self, state: Dict[str, Any], type_str: str, radius: int) -> int:
+        """Count entities of type within radius."""
+        current = self._get_current_entity(state)
+        if not current:
+            return 0
+            
+        count = 0
+        x1, y1 = current["position"]
+        for other in state["entities"]:
+            if other["type"] == type_str:
+                x2, y2 = other["position"]
+                if abs(x2-x1) + abs(y2-y1) <= radius:
+                    count += 1
+        return count
 
 
 class StateManager:
@@ -183,16 +384,103 @@ class StateManager:
         self.history.append(self.current_state.copy())
         
     def transform_entity(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Transform an entity according to parameters."""
-        pass  # Implementation details
+        """Transform entity properties."""
+        current = self.current_state.get("current_entity")
+        if not current:
+            return {}
+
+        changes = {}
+        for key, value in params.items():
+            if key in current["properties"]:
+                current["properties"][key] = value
+                changes[key] = value
+
+        return {
+            "entity": current["id"],
+            "changes": changes
+        }
         
     def move_entity(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Move an entity according to parameters."""
-        pass  # Implementation details
+        """Move entity to new position."""
+        current = self.current_state.get("current_entity")
+        if not current:
+            print("Debug: No current entity found")
+            return {}
+
+        old_pos = current["position"]
+        new_pos = params["position"]
+        print(f"Debug: Moving from {old_pos} to {new_pos}")
+        
+        # Get grid cell values
+        grid = self.current_state["grid"]
+        if not (0 <= new_pos[0] < grid["width"] and 0 <= new_pos[1] < grid["height"]):
+            return {}  # Invalid position
+            
+        # Check if we're pushing a box
+        if grid["cells"][new_pos[1]][new_pos[0]] == 3:  # Box
+            # Calculate box's new position
+            dx = new_pos[0] - old_pos[0]
+            dy = new_pos[1] - old_pos[1]
+            box_new_pos = [new_pos[0] + dx, new_pos[1] + dy]
+            
+            # Find the box entity
+            box_entity = next(
+                (e for e in self.current_state["entities"] 
+                 if e["position"] == new_pos),
+                None
+            )
+            if box_entity:
+                # Check if box's new position is valid
+                if grid["cells"][box_new_pos[1]][box_new_pos[0]] in [0, 4]:
+                    # Update box position in grid
+                    grid["cells"][new_pos[1]][new_pos[0]] = 0  # Clear box's old position
+                    grid["cells"][box_new_pos[1]][box_new_pos[0]] = 3  # Set box's new position
+                    # Update box entity position
+                    box_entity["position"] = box_new_pos
+                else:
+                    return {}  # Invalid move
+        
+        # Get entity type value and handle goal cells
+        entity_type_value = grid["cells"][old_pos[1]][old_pos[0]]
+        old_cell_was_goal = False
+        
+        # Check if we're moving from a goal cell
+        if grid["cells"][old_pos[1]][old_pos[0]] == 2 and any(
+            e["position"] == old_pos and e["type"] == "player"
+            for e in self.current_state["entities"]
+                else:
+            old_cell_was_goal = True
+            
+        # Update grid cells
+        grid["cells"][old_pos[1]][old_pos[0]] = 4 if old_cell_was_goal else 0  # Restore goal or clear
+        
+        # Preserve goal cell if moving onto one
+        if grid["cells"][new_pos[1]][new_pos[0]] == 4:
+            entity_type_value = 2  # Player on goal
+            
+        grid["cells"][new_pos[1]][new_pos[0]] = entity_type_value  # Set new position
+        
+        # Update player entity position
+        current["position"] = new_pos
+        
+        return {
+            "entity": current["id"],
+            "from": old_pos,
+            "to": new_pos
+        }
         
     def validate_state(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Validate state according to parameters."""
-        pass  # Implementation details
+        condition = params.get("condition")
+        if not condition:
+            return {}
+            
+        # For now, just check if the condition key exists
+        # In a full implementation, we would evaluate the condition
+        return {
+            "valid": True,
+            "condition": condition
+        }
 
 
 class RuleValidator:
