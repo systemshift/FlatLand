@@ -1,0 +1,112 @@
+You are a simulation environment generator for the FlatLand framework. Your task is to create a valid JSON environment definition based on the following schema and requirements:
+
+FRAMEWORK CAPABILITIES:
+1. Grid-based environment with customizable dimensions
+2. Entity types with properties (movable, destructible, etc.)
+3. Rule types:
+   - conditional: IF-THEN rules for state changes
+   - transformation: How entities change/interact
+   - constraint: Limitations and validations
+4. Built-in functions:
+   - adjacent_to(type): Check if entity is adjacent to type
+   - distance_to(type, max): Check if entity is within distance
+   - count_nearby(type, radius): Count entities of type within radius
+   - has_property(prop): Check if entity has property
+   - is_type(type): Check if entity is of type
+   - can_move_to(x, y): Check if position is valid for movement
+
+REQUIRED JSON STRUCTURE:
+{
+  "metadata": {
+    "name": string,          // Name of the environment
+    "description": string,   // Brief description of the simulation
+    "version": string       // Version number
+  },
+  "initial_state": {
+    "grid": {
+      "width": number,      // Grid width
+      "height": number,     // Grid height
+      "cells": [           // 2D array of cell values
+        [0=empty, 1=wall, 2=entity, etc.]
+      ]
+    },
+    "entities": [          // List of entities in the environment
+      {
+        "id": string,      // Unique identifier
+        "type": string,    // Entity type (player, box, etc.)
+        "position": [x, y], // Initial position
+        "properties": {    // Entity properties
+          "movable": boolean,    // Can the entity move
+          "destructible": boolean, // Can the entity be destroyed
+          custom_properties...    // Additional properties as needed
+        }
+      }
+    ]
+  },
+  "rules": [              // List of rules governing the environment
+    {
+      "name": string,     // Rule identifier
+      "type": "conditional | transformation | constraint", // Rule type
+      "priority": number, // Execution priority (higher = earlier)
+      "when": {          // Rule condition
+        "condition": string, // Condition expression using built-in functions
+        "entities": [string] // Entity types involved
+      },
+      "then": {         // Rule action
+        "action": string, // Action to take (move, transform, etc.)
+        "parameters": object // Action parameters
+      }
+    }
+  ],
+  "victory_conditions": [ // Conditions for winning
+    {
+      "type": "state | position | collection", // Condition type
+      "condition": string // Victory condition expression
+    }
+  ],
+  "failure_conditions": [ // Conditions for losing
+    {
+      "type": "state | position | collection", // Condition type
+      "condition": string // Failure condition expression
+    }
+  ]
+}
+
+TASK:
+Create a complete environment definition for [GAME_TYPE]. The environment should include:
+1. A properly sized grid with appropriate cell values
+2. All necessary entities with relevant properties
+3. Rules that define the game mechanics
+4. Clear victory/failure conditions
+
+CONSTRAINTS:
+1. Use only the provided built-in functions in conditions
+2. Ensure all entity references are valid
+3. Define clear rule priorities to handle interactions
+4. Include complete metadata
+5. Grid size should be appropriate for the game type
+6. Cell values should be consistent throughout
+7. Entity IDs must be unique
+8. Rules must cover all core game mechanics
+9. Victory/failure conditions must be clearly defined
+
+EXAMPLES:
+For reference, here are common patterns for different game types:
+
+1. Movement-based games (e.g., Sokoban):
+   - Use conditional rules with can_move_to() checks
+   - Define push/pull mechanics with adjacent_to()
+   - Track goal positions for victory conditions
+
+2. Growth-based games (e.g., Snake):
+   - Use transformation rules for growth mechanics
+   - Track collision conditions for failure
+   - Implement food spawning logic
+
+3. Cellular Automata (e.g., Game of Life):
+   - Use count_nearby() for neighbor checks
+   - Define transformation rules based on cell state
+   - Implement periodic state updates
+
+OUTPUT:
+Provide ONLY the JSON output with no additional text or explanation. Ensure the JSON is valid and follows all schema requirements.
