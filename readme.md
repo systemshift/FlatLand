@@ -154,30 +154,74 @@ Check `examples/` for complete environments:
 
 ## LLM Integration
 
-### With Function Calling
+FlatLand now includes built-in OpenAI integration for generating custom environments from natural language descriptions.
+
+### Quick Start
 
 ```python
-response = client.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": "Create a puzzle..."}],
-    functions=[{
-        "name": "create_environment",
-        "parameters": ENVIRONMENT_SCHEMA
-    }]
+from flatland.llm import generate_environment
+
+# Generate a custom environment from description
+env = generate_environment(
+    description="A maze where the player must collect keys to unlock doors, "
+                "with enemies that follow fixed patrol routes",
+    style_guidance="cyberpunk theme with neon lighting"  # Optional
+)
+
+# Use the environment
+engine = LogicEngine()
+engine.load_environment(env.to_dict())
+```
+
+### Configuration
+
+Set your OpenAI API key:
+```bash
+export FLATLAND_OPENAI_KEY='your-api-key'
+```
+
+### Advanced Usage
+
+```python
+from flatland.llm import EnvironmentGenerator
+
+# Create a generator with custom settings
+generator = EnvironmentGenerator(api_key='your-api-key')
+
+# Generate with more control
+env = generator.generate(
+    description="Your environment description",
+    style_guidance="Optional style/theme guidance",
+    model="gpt-4-turbo-preview",  # Choose model
+    max_retries=3  # Validation retry attempts
 )
 ```
 
-### With Direct Generation
+### Example Script
 
+Try the interactive environment generator:
+```bash
+python examples/generate_custom_env.py
+```
+
+This script walks you through:
+1. Describing your desired environment
+2. Adding optional style guidance
+3. Generating and saving the environment
+4. Testing it immediately
+
+### Error Handling
+
+The LLM integration includes robust error handling:
 ```python
-prompt = """
-Create a FlatLand environment where:
-1. Water freezes when touching ice
-2. Fire melts ice into water
-3. Water extinguishes fire
-"""
-
-# LLM generates valid JSON following schema
+try:
+    env = generate_environment(description="...")
+except SchemaValidationError as e:
+    print("Invalid environment:", e.validation_errors)
+except RateLimitError as e:
+    print(f"Rate limited. Try again in {e.retry_after} seconds")
+except LLMResponseError as e:
+    print("LLM response error:", e.response_text)
 ```
 
 ## Contributing
