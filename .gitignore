@@ -40,3 +40,4 @@ ENV/
 
 # Misc
 .DS_Store
+openai_key.txt
