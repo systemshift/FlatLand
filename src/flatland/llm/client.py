@@ -9,7 +9,10 @@ from functools import wraps
 from typing import Optional, Dict, Any
 
 from openai import OpenAI
-from openai.types.error import APIError, RateLimitError as OpenAIRateLimitError
+try:
+    from openai.error import APIError, RateLimitError as OpenAIRateLimitError
+except ImportError:
+    from openai import APIError, RateLimitError as OpenAIRateLimitError
 
 from ..schemas import ENVIRONMENT_SCHEMA, EnvironmentDefinition
 from .exceptions import FlatlandLLMError, SchemaValidationError, RateLimitError, LLMResponseError

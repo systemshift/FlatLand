@@ -448,7 +448,7 @@ class StateManager:
         if grid["cells"][old_pos[1]][old_pos[0]] == 2 and any(
             e["position"] == old_pos and e["type"] == "player"
             for e in self.current_state["entities"]
-                else:
+        ):
             old_cell_was_goal = True
             
         # Update grid cells
