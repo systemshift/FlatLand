@@ -14,7 +14,8 @@ try:
 except ImportError:
     from openai import APIError, RateLimitError as OpenAIRateLimitError
 
-from ..schemas import ENVIRONMENT_SCHEMA, EnvironmentDefinition
+from ..schemas import EnvironmentDefinition
+from ..validator import SchemaValidator, ValidationError
 from .exceptions import FlatlandLLMError, SchemaValidationError, RateLimitError, LLMResponseError
 
 def rate_limit(max_per_minute: int = 10):
@@ -89,15 +90,16 @@ class EnvironmentGenerator:
     
     def _validate_environment(self, env_data: Dict[str, Any]) -> EnvironmentDefinition:
         """Validate the generated environment against the schema."""
-        try:
-            # Basic JSON schema validation would go here
-            # For now, we'll use the EnvironmentDefinition class's validation
-            return EnvironmentDefinition.from_dict(env_data)
-        except Exception as e:
+        validator = SchemaValidator()
+        is_valid, errors = validator.validate_environment(env_data)
+        
+        if not is_valid:
             raise SchemaValidationError(
-                f"Generated environment failed validation: {str(e)}",
-                validation_errors=[str(e)]
+                "Generated environment failed validation",
+                validation_errors=errors
             )
+            
+        return EnvironmentDefinition.from_dict(env_data)
     
     @rate_limit(max_per_minute=10)
     def generate(

@@ -1,6 +1,7 @@
 import json
 import pytest
 from flatland.logic_engine import LogicEngine, Rule
+from flatland.validator import ValidationError
 
 def test_load_environment():
     """Test loading a valid environment definition."""
@@ -52,7 +53,7 @@ def test_invalid_environment():
     }
     
     engine = LogicEngine()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValidationError):
         engine.load_environment(env_def)
 
 def test_rule_validation():
@@ -87,10 +88,12 @@ def test_rule_validation():
     engine = LogicEngine()
     
     # Valid rule should pass validation
-    assert engine.rule_validator.validate_rule(valid_rule)
+    is_valid, _ = engine.schema_validator.validate_rule(valid_rule)
+    assert is_valid
     
     # Invalid rule should fail validation
-    assert not engine.rule_validator.validate_rule(invalid_rule)
+    is_valid, _ = engine.schema_validator.validate_rule(invalid_rule)
+    assert not is_valid
 
 def test_state_history():
     """Test state history management."""
