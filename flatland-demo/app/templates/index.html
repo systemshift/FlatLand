@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlatLand Simulations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>FlatLand Simulations</h1>
+            <p>Create grid-based simulations using natural language</p>
+        </header>
+        
+        <main>
+            <div id="generation-form" class="generation-form">
+                <div class="form-group">
+                    <label for="description">Describe your simulation:</label>
+                    <textarea
+                        id="description"
+                        placeholder="e.g., Create a Sokoban game with a player, boxes, and target positions"
+                        rows="5"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="style">Style guidance (optional):</label>
+                    <input
+                        type="text"
+                        id="style"
+                        placeholder="e.g., space theme, forest setting, etc."
+                    />
+                </div>
+                
+                <button id="generate-btn" class="primary-button">
+                    Generate Simulation
+                </button>
+                
+                <div id="error" class="error" style="display: none;"></div>
+                <div id="loading" class="loading" style="display: none;">
+                    Generating simulation... This may take up to a minute.
+                </div>
+            </div>
+            
+            <div id="simulation" class="simulation" style="display: none;">
+                <div class="simulation-header">
+                    <h2 id="simulation-name">Simulation</h2>
+                    <p id="simulation-description"></p>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="grid-canvas"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <div class="control-buttons">
+                        <button data-direction="up" class="control-button">
+                            ↑
+                        </button>
+                        <div class="horizontal-controls">
+                            <button data-direction="left" class="control-button">
+                                ←
+                            </button>
+                            <button id="step-btn" class="control-button">
+                                Step
+                            </button>
+                            <button data-direction="right" class="control-button">
+                                →
+                            </button>
+                        </div>
+                        <button data-direction="down" class="control-button">
+                            ↓
+                        </button>
+                    </div>
+                </div>
+                
+                <button id="new-simulation-btn" class="secondary-button">
+                    Create New Simulation
+                </button>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Powered by FlatLand and GPT-4</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
