@@ -1,0 +1,20 @@
+# FlatLand Web API Dependencies
+
+# Core dependencies
+fastapi==0.95.0
+uvicorn==0.21.1
+pydantic==1.10.7
+python-dotenv==1.0.0
+websockets==11.0.1
+
+# OpenAI API
+openai==1.3.0
+
+# FlatLand dependencies
+# These would be installed through the FlatLand package for a real deployment
+jsonschema==4.17.3
+typing-extensions==4.5.0
+
+# Testing
+pytest==7.3.1
+httpx==0.24.0
