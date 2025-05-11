@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "flatland"
 version = "0.1.0"
 description = "A constraint-based logic engine for LLM-driven simulations"
-readme = "readme.md"
+readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 keywords = ["simulation", "logic-engine", "llm", "rules", "constraints"]
@@ -29,23 +29,11 @@ dependencies = [
     "typing-extensions>=4.7.0",
     "openai>=1.0.0",
     "jsonschema>=4.0.0",  # For schema validation
-    "Flask>=2.0.0",
 ]
 
 [project.optional-dependencies]
 llm = [
     "openai>=1.0.0",
-]
-
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "black>=22.0.0",
-    "isort>=5.0.0",
-    "mypy>=1.0.0",
-    "flake8>=5.0.0",
-    "responses>=0.23.0",  # For mocking OpenAI API in tests
-    "pytest-asyncio>=0.21.0",  # For testing async OpenAI calls
 ]
 
 [tool.setuptools.packages.find]
@@ -69,9 +57,3 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-addopts = "--cov=flatland --cov-report=term-missing"
-filterwarnings = ["error"]
