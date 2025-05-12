@@ -3,21 +3,21 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "flatland"
+name = "prompt_to_game_engine"
 version = "0.1.0"
-description = "A constraint-based logic engine for LLM-driven simulations"
-readme = "README.md"
+description = "A system to generate and play 2D games from natural language prompts using LLMs and MCP."
+readme = "prompt_to_game_engine/README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE"}
-keywords = ["simulation", "logic-engine", "llm", "rules", "constraints"]
+license = {file = "LICENSE"} # Assuming LICENSE file will be at project root
+keywords = ["game-engine", "llm", "mcp", "prompt-driven", "2d-game"]
 authors = [
-  { name="systemshift", email="42102034+systemshift@users.noreply.github.com" },
+  { name="systemshift", email="42102034+systemshift@users.noreply.github.com" }, # Or your details
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "License :: OSI Approved :: BSD License",
+    "License :: OSI Approved :: BSD License", # Or your chosen license
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -25,21 +25,23 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-    "numpy>=1.20.0",
     "typing-extensions>=4.7.0",
     "openai>=1.0.0",
-    "jsonschema>=4.0.0",  # For schema validation
+    "jsonschema>=4.0.0",  # For SGD schema validation
+    "Flask>=2.0.0",       # For the MCP server and Web UI backend
+    "requests>=2.20.0"    # For services to call MCP server / other HTTP services
 ]
 
 [project.optional-dependencies]
-llm = [
+llm = [ # This group might be redundant if openai is in main dependencies
     "openai>=1.0.0",
 ]
+# dev dependencies for linters, formatters, etc. can be added here later if needed
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["flatland*"]
-exclude = ["tests*"]
+where = ["."] # Search from project root
+include = ["prompt_to_game_engine*"] # Include our main package
+# exclude = ["tests*"] # Can add later if we have a top-level tests dir
 
 [tool.black]
 line-length = 88
