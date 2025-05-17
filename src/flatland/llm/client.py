@@ -61,11 +61,16 @@ class EnvironmentGenerator:
     
     def _load_prompt_template(self):
         """Load and prepare the system prompt template."""
+        # Construct path relative to this file's location
+        # client.py is in src/flatland/llm/
+        # prompt_template.txt is in src/flatland/
+        current_dir = os.path.dirname(__file__)
+        template_path = os.path.join(current_dir, '..', 'prompt_template.txt')
         try:
-            with open('src/flatland/prompt_template.txt', 'r') as f:
+            with open(template_path, 'r') as f:
                 self.prompt_template = f.read()
         except FileNotFoundError:
-            raise FlatlandLLMError("Could not find prompt template file")
+            raise FlatlandLLMError(f"Could not find prompt template file at {template_path}")
     
     def _build_messages(self, description: str, style_guidance: Optional[str] = None) -> list:
         """Build the message list for the OpenAI API call."""

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "prompt_to_game_engine"
 version = "0.1.0"
 description = "A system to generate and play 2D games from natural language prompts using LLMs and MCP."
-readme = "prompt_to_game_engine/README.md"
+readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"} # Assuming LICENSE file will be at project root
 keywords = ["game-engine", "llm", "mcp", "prompt-driven", "2d-game"]
@@ -39,9 +39,14 @@ llm = [ # This group might be redundant if openai is in main dependencies
 # dev dependencies for linters, formatters, etc. can be added here later if needed
 
 [tool.setuptools.packages.find]
-where = ["."] # Search from project root
-include = ["prompt_to_game_engine*"] # Include our main package
-# exclude = ["tests*"] # Can add later if we have a top-level tests dir
+where = ["src"]  # Look for packages in the 'src' directory
+packages = ["flatland"] # Our main package is 'flatland'
+# py_modules are for top-level .py files. mcp_server.py is in the root, not src.
+# We'll list mcp_server as a top-level module separately if needed, or it can be run as a script.
+# For now, focusing on making 'flatland' package installable.
+
+[tool.setuptools]
+py-modules = ["mcp_server"] # Explicitly declare mcp_server as an installable top-level module
 
 [tool.black]
 line-length = 88
