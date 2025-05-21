@@ -1,5 +1,7 @@
 Flask>=2.0
 openai>=1.0
-mesa>=1.0
-python-dotenv>=0.15 
+# Pin Mesa to a version before 3.0 to match LLM knowledge cutoff
+# Mesa 2.2.x versions are known to use mesa.time
+mesa~=2.2.0
+python-dotenv>=0.15
 # Add other dependencies as needed

@@ -23,6 +23,13 @@ def generate_mesa_endpoint():
 
     user_prompt = data['prompt']
     model_params = data.get('model_params', None) # Optional model parameters
+    steps_to_run = data.get('steps_to_run', 1) # Optional, defaults to 1 step
+    try:
+        steps_to_run = int(steps_to_run)
+        if steps_to_run <= 0:
+            steps_to_run = 1 # Ensure positive number of steps
+    except ValueError:
+        steps_to_run = 1 # Default if non-integer provided
 
     # 1. Call OpenAI Interface
     # Note: Actual OpenAI API call is still placeholder in openai_interface.py
@@ -39,8 +46,12 @@ def generate_mesa_endpoint():
 
     # 2. Call Mesa Runner
     # WARNING: This uses exec() and is insecure. For development/MVP only.
-    print("Attempting to run Mesa code...")
-    simulation_result = mesa_runner.run_mesa_code(mesa_code_str, model_params=model_params)
+    print(f"Attempting to run Mesa code with params: {model_params}, steps: {steps_to_run}...")
+    simulation_result = mesa_runner.run_mesa_code(
+        mesa_code_str, 
+        model_params=model_params,
+        steps_to_run=steps_to_run
+    )
     print("--- Simulation Result ---")
     print(simulation_result)
     print("-------------------------")
