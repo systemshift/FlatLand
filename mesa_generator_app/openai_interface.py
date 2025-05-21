@@ -22,7 +22,7 @@ else:
         client = None
 
 
-def get_mesa_code(user_prompt: str, model_name: str = "gpt-3.5-turbo") -> str:
+def get_mesa_code(user_prompt: str, model_name: str = "o4-mini-2025-04-16") -> str:
     """
     Takes a user's natural language prompt and returns Mesa Python code
     by calling the OpenAI API.
@@ -66,8 +66,10 @@ Please generate the Mesa Python code based on this description. Remember to only
             messages=[
                 {"role": "system", "content": system_message_content},
                 {"role": "user", "content": user_message_content}
-            ],
-            temperature=0.2 # Lower temperature for more deterministic code generation
+            ]
+            # temperature=0.2 # Removed as it's not supported by the user's new model
+            # If a specific temperature is needed and supported, it can be re-added.
+            # For models that only support default temperature, omitting it is best.
         )
         generated_code = response.choices[0].message.content
 
