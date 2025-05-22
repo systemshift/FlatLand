@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesa Model Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Mesa Model Generator</h1>
+        <form id="mesa-form">
+            <div class="form-group">
+                <label for="prompt-input">Enter your simulation prompt:</label>
+                <textarea id="prompt-input" name="prompt" rows="5" placeholder="e.g., Create a model with 5 agents that move randomly on a 10x10 grid for 10 steps."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="steps-input">Number of steps to run:</label>
+                <input type="number" id="steps-input" name="steps" value="1" min="1">
+            </div>
+            
+            <div class="form-group">
+                <label for="agents-input">Number of agents (N):</label>
+                <input type="number" id="agents-input" name="agents" value="5" min="1">
+            </div>
+
+            <button type="submit" id="submit-button">Generate & Run Simulation</button>
+        </form>
+
+        <div id="status-message" class="status"></div>
+
+        <h2>Results:</h2>
+        <div class="results-container">
+            <div id="error-output" class="error"></div>
+            
+            <h3>Generated Code Preview:</h3>
+            <pre><code id="code-preview"></code></pre>
+            
+            <h3>Simulation Output:</h3>
+            <pre id="results-output"></pre>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

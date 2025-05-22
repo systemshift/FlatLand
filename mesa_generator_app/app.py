@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 import os
 
@@ -12,8 +12,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    # Later, this will render an HTML page from templates/index.html
-    return "Mesa Generator App - Backend is running. UI Coming Soon!"
+    return render_template('index.html')
 
 @app.route('/generate_mesa', methods=['POST'])
 def generate_mesa_endpoint():
